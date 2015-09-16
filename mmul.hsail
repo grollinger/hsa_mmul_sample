@@ -1,43 +1,115 @@
-// Copyright 2014 HSA Foundation Inc.  All Rights Reserved.
-// *
-// * HSAF is granting you permission to use this software and documentation (if
-// * any) (collectively, the "Materials") pursuant to the terms and conditions
-// * of the Software License Agreement included with the Materials.  If you do
-// * not have a copy of the Software License Agreement, contact the  HSA Foundation for a copy.
-// * Redistribution and use in source and binary forms, with or without
-// * modification, are permitted provided that the following conditions
-// * are met:
-// * 1. Redistributions of source code must retain the above copyright
-// *    notice, this list of conditions and the following disclaimer.
-// * 2. Redistributions in binary form must reproduce the above copyright
-// *    notice, this list of conditions and the following disclaimer in the
-// *    documentation and/or other materials provided with the distribution
-// * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-// * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-// * CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE SOFTWARE.
-// 
 module &m:1:0:$full:$large:$default;
 
-decl prog function &abort()();
-
-prog kernel &__vector_copy_kernel(
+prog kernel &__OpenCL_mmul_kernel_kernel(
+	kernarg_u64 %__global_offset_0,
+	kernarg_u64 %__global_offset_1,
+	kernarg_u64 %__global_offset_2,
+	kernarg_u64 %__printf_buffer,
+	kernarg_u64 %__vqueue_pointer,
+	kernarg_u64 %__aqlwrap_pointer,
 	kernarg_u64 %a,
-	kernarg_u64 %b)
+	kernarg_u64 %b,
+	kernarg_u64 %c,
+	kernarg_u64 %arows,
+	kernarg_u64 %acols)
 {
+	pragma "AMD RTI", "ARGSTART:__OpenCL_mmul_kernel_kernel";
+	pragma "AMD RTI", "version:3:1:104";
+	pragma "AMD RTI", "device:generic";
+	pragma "AMD RTI", "uniqueid:1024";
+	pragma "AMD RTI", "memory:private:0";
+	pragma "AMD RTI", "memory:region:0";
+	pragma "AMD RTI", "memory:local:0";
+	pragma "AMD RTI", "value:__global_offset_0:u64:1:1:0";
+	pragma "AMD RTI", "value:__global_offset_1:u64:1:1:16";
+	pragma "AMD RTI", "value:__global_offset_2:u64:1:1:32";
+	pragma "AMD RTI", "pointer:__printf_buffer:u8:1:1:48:uav:7:1:RW:0:0:0";
+	pragma "AMD RTI", "value:__vqueue_pointer:u64:1:1:64";
+	pragma "AMD RTI", "value:__aqlwrap_pointer:u64:1:1:80";
+	pragma "AMD RTI", "pointer:a:double:1:1:96:uav:7:8:RW:0:0:0";
+	pragma "AMD RTI", "pointer:b:double:1:1:112:uav:7:8:RW:0:0:0";
+	pragma "AMD RTI", "pointer:c:double:1:1:128:uav:7:8:RW:0:0:0";
+	pragma "AMD RTI", "value:arows:u64:1:1:144";
+	pragma "AMD RTI", "value:acols:u64:1:1:160";
+	pragma "AMD RTI", "function:1:0";
+	pragma "AMD RTI", "memory:64bitABI";
+	pragma "AMD RTI", "privateid:8";
+	pragma "AMD RTI", "enqueue_kernel:0";
+	pragma "AMD RTI", "kernel_index:0";
+	pragma "AMD RTI", "reflection:0:size_t";
+	pragma "AMD RTI", "reflection:1:size_t";
+	pragma "AMD RTI", "reflection:2:size_t";
+	pragma "AMD RTI", "reflection:3:size_t";
+	pragma "AMD RTI", "reflection:4:size_t";
+	pragma "AMD RTI", "reflection:5:size_t";
+	pragma "AMD RTI", "reflection:6:double*";
+	pragma "AMD RTI", "reflection:7:double*";
+	pragma "AMD RTI", "reflection:8:double*";
+	pragma "AMD RTI", "reflection:9:ulong";
+	pragma "AMD RTI", "reflection:10:ulong";
+	pragma "AMD RTI", "ARGEND:__OpenCL_mmul_kernel_kernel";
 
-@__vector_copy_kernel_entry:
-	// BB#0:                                // %entry
+@__OpenCL_mmul_kernel_kernel_entry:
+	// BB#0:
+	ld_kernarg_align(8)_width(all)_u64	$d0, [%arows];
+	cmp_eq_b1_s64	$c0, $d0, 0;
+	cbr_b1	$c0, @BB0_5;
+	// BB#1:                                // %.preheader.lr.ph
+	ld_kernarg_align(8)_width(all)_u64	$d1, [%acols];
+	ld_kernarg_align(8)_width(all)_u64	$d2, [%c];
+	ld_kernarg_align(8)_width(all)_u64	$d3, [%b];
+	ld_kernarg_align(8)_width(all)_u64	$d4, [%a];
 	workitemabsid_u32	$s0, 0;
-	cvt_s64_s32	$d0, $s0;
-	shl_u64	$d0, $d0, 2;
-	ld_kernarg_align(8)_width(all)_u64	$d1, [%b];
-	add_u64	$d1, $d1, $d0;
-	ld_kernarg_align(8)_width(all)_u64	$d2, [%a];
-	add_u64	$d0, $d2, $d0;
-	ld_global_u32	$s0, [$d0];
-	st_global_u32	$s0, [$d1];
+	cvt_u64_u32	$d5, $s0;
+	ld_kernarg_align(8)_width(all)_u64	$d6, [%__global_offset_0];
+	add_u64	$d5, $d5, $d6;
+	and_b64	$d6, $d5, 4294967295;
+	mul_u64	$d5, $d6, $d1;
+	mul_u64	$d6, $d6, $d0;
+	mov_b32	$s0, 0;
+	mov_b64	$d7, 0;
+	mov_b32	$s1, 1;
+	mov_b64	$d8, 0;
+	mov_b64	$d9, $d7;
+
+@BB0_2:
+	// %.preheader
+	cmp_eq_b1_s64	$c0, $d1, 0;
+	mov_b32	$s2, $s1;
+	mov_b64	$d11, $d7;
+	mov_b64	$d10, $d8;
+	cbr_b1	$c0, @BB0_4;
+
+@BB0_3:
+	// %.lr.ph
+	mad_u64	$d12, $d11, $d0, $d9;
+	shl_u64	$d12, $d12, 3;
+	add_u64	$d12, $d4, $d12;
+	ld_global_align(8)_const_width(all)_f64	$d12, [$d12];
+	add_u64	$d11, $d11, $d5;
+	shl_u64	$d11, $d11, 3;
+	add_u64	$d11, $d3, $d11;
+	ld_global_align(8)_f64	$d11, [$d11];
+	mul_f64	$d11, $d12, $d11;
+	add_f64	$d10, $d10, $d11;
+	add_u32	$s3, $s2, 1;
+	cvt_u64_u32	$d11, $s2;
+	cmp_lt_b1_u64	$c0, $d11, $d1;
+	mov_b32	$s2, $s3;
+	cbr_b1	$c0, @BB0_3;
+
+@BB0_4:
+	// %._crit_edge
+	add_u64	$d9, $d9, $d6;
+	shl_u64	$d9, $d9, 3;
+	add_u64	$d9, $d2, $d9;
+	st_global_align(8)_f64	$d10, [$d9];
+	add_u32	$s0, $s0, 1;
+	cvt_u64_u32	$d9, $s0;
+	cmp_lt_b1_u64	$c0, $d9, $d0;
+	cbr_b1	$c0, @BB0_2;
+
+@BB0_5:
+	// %._crit_edge4
 	ret;
 };
