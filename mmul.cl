@@ -6,10 +6,10 @@ kernel void mmul_kernel(
                         global double* c,
                         ulong arows,
                         ulong acols) {
-  uint i = get_global_id(0);
-  for(uint j = 0; j < arows; ++j) {
+  ulong i = get_global_id(0);
+  for(ulong j = 0; j < arows; ++j) {
     double c_ij = 0.0;
-    for(uint k = 0; k < acols; ++k) {
+    for(ulong k = 0; k < acols; ++k) {
       c_ij += a[k*arows + j] * b[i * acols + k];
     }
     c[i*arows + j] = c_ij;
