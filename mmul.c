@@ -35,6 +35,42 @@ if (status != HSA_STATUS_SUCCESS) { \
    printf("%s succeeded.\n", #msg); \
 }
 
+const char KERNEL[] = "&mmul_kernel";
+const size_t AROWS = 1000;
+const size_t ACOLS = 1000;
+
+double* alloc_array() {
+    auto array_bytes = AROWS * ACOLS * sizeof(double);
+
+    double* in=(double*)malloc(array_bytes);
+    memset(in, 1, array_bytes);
+    auto err=hsa_memory_register(in, array_bytes);
+    check(Registering argument memory for input parameter, err);
+}
+
+void randomize_array(double* arr) {
+    double lower_bound = -1.0;
+    double upper_bound = 1.0;
+    std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
+    std::default_random_engine re;
+
+    for(auto i = 0U; i < AROWS * ACOLS; ++i) {
+        arr[i] = unif(re);
+    }
+}
+
+void julia_mmul(double* a, double* b, double* c){
+    for(auto i = 0; i < ACOLS; ++i) {
+        for(auto j = 0; j < AROWS; ++j) {
+            double c_ij = 0.0;
+            for(auto k = 0; k < ACOLS; ++k) {
+                c_ij += a[k*AROWS + j] * b[i * ACOLS + k];
+            }
+            c[i*AROWS + j] = c_ij;
+        }
+    }
+}
+
 /*
  * Loads a BRIG module from a specified file. This
  * function does not validate the module.
@@ -209,7 +245,7 @@ int main(int argc, char **argv) {
     * Extract the symbol from the executable.
     */
     hsa_executable_symbol_t symbol;
-    err = hsa_executable_get_symbol(executable, NULL, "&__vector_copy_kernel", agent, 0, &symbol);
+    err = hsa_executable_get_symbol(executable, NULL, KERNEL, agent, 0, &symbol);
     check(Extract the symbol from the executable, err);
 
     /*
@@ -238,23 +274,26 @@ int main(int argc, char **argv) {
     /*
      * Allocate and initialize the kernel arguments and data.
      */
-    char* in=(char*)malloc(1024*1024*4);
-    memset(in, 1, 1024*1024*4);
-    err=hsa_memory_register(in, 1024*1024*4);
-    check(Registering argument memory for input parameter, err);
 
-    char* out=(char*)malloc(1024*1024*4);
-    memset(out, 0, 1024*1024*4);
-    err=hsa_memory_register(out, 1024*1024*4);
-    check(Registering argument memory for output parameter, err);
+    double* a=alloc_array(); randomize_array(a);
+    double* b=alloc_array(); randomize_array(b);
+    double* c=alloc_array(); randomize_array(c);
+    double* c_expected=alloc_array();
+    julia_mmul(a,b,c_expected);
 
     struct __attribute__ ((aligned(16))) args_t {
-        void* in;
-        void* out;
+        void* a;
+        void* b;
+        void* c;
+        uint64_t arows;
+        uint64_t acols;
     } args;
 
-    args.in=in;
-    args.out=out;
+    args.a=a;
+    args.b=b;
+    args.c=c;
+    args.arows = AROWS;
+    args.acols = ACOLS;
 
     /*
      * Find a memory region that supports kernel arguments.
@@ -330,7 +369,7 @@ int main(int argc, char **argv) {
     int valid=1;
     int fail_index=0;
     for(int i=0; i<1024*1024; i++) {
-        if(out[i]!=in[i]) {
+        if(c[i]!=c_expected[i]) {
             fail_index=i;
             valid=0;
             break;
@@ -340,7 +379,7 @@ int main(int argc, char **argv) {
     if(valid) {
         printf("Passed validation.\n");
     } else {
-        printf("VALIDATION FAILED!\nBad index: %d\n", fail_index);
+        printf("VALIDATION FAILED!\nBad index: %d (%f != %f)\n", fail_index, c[fail_index], c_expected[fail_index]);
     }
 
     /*
@@ -364,8 +403,10 @@ int main(int argc, char **argv) {
     err=hsa_shut_down();
     check(Shutting down the runtime, err);
 
-    free(in);
-    free(out);
+    free(a);
+    free(b);
+    free(c);
+    free(c_expected);
 
     return 0;
 }
