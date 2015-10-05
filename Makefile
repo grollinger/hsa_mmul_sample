@@ -23,7 +23,7 @@ HSA_RUNTIME_PATH?=/home/strollinger/hsa/runtime
 
 LFLAGS= -Wl,--unresolved-symbols=ignore-in-shared-libs
 
-CC := gcc
+CC := clang
 
 HSASM := HSAILasm
 
@@ -41,7 +41,7 @@ mmul: $(OBJ_FILES) $(BRIG_FILES)
 	$(CC) $(LFLAGS) $(OBJ_FILES) -L$(HSA_RUNTIME_PATH)/lib -lhsa-runtime64 -lhsa-runtime-ext64 -o mmul
 
 %.o: %.c
-	$(CC) -c -I$(HSA_RUNTIME_PATH)/include -o $@ $< -std=c99
+	$(CC) -c -I$(HSA_RUNTIME_PATH)/include -o $@ $< -std=c11 -g
 
 %.brig: %.hsail
 	$(HSASM) -assemble -o=$@ $<
