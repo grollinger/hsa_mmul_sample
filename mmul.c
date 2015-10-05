@@ -20,10 +20,16 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE SOFTWARE.
  */
 
+// enable POSIX 2008
+#define _XOPEN_SOURCE 700
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <time.h>
+
 #include "hsa.h"
 #include "hsa_ext_finalize.h"
 
@@ -35,35 +41,49 @@ if (status != HSA_STATUS_SUCCESS) { \
    printf("%s succeeded.\n", #msg); \
 }
 
-const char KERNEL[] = "&mmul_kernel";
+struct timespec diff(struct timespec start, struct timespec end) {
+  struct timespec temp;
+  if ((end.tv_nsec-start.tv_nsec)<0) {
+    temp.tv_sec = end.tv_sec-start.tv_sec-1;
+    temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+  } else {
+    temp.tv_sec = end.tv_sec-start.tv_sec;
+    temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+  }
+  return temp;
+}
+
+const char MODULE_FILE[] = "mmul.brig";
+const char KERNEL[] = "&mmul";
 const size_t AROWS = 1000;
 const size_t ACOLS = 1000;
 
 double* alloc_array() {
-    auto array_bytes = AROWS * ACOLS * sizeof(double);
+    size_t array_bytes = AROWS * ACOLS * sizeof(double);
 
     double* in=(double*)malloc(array_bytes);
     memset(in, 1, array_bytes);
-    auto err=hsa_memory_register(in, array_bytes);
+    hsa_status_t err=hsa_memory_register(in, array_bytes);
     check(Registering argument memory for input parameter, err);
+
+    return in;
 }
 
 void randomize_array(double* arr) {
-    double lower_bound = -1.0;
-    double upper_bound = 1.0;
-    std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
-    std::default_random_engine re;
+    double low = -1.0;
+    double high = 1.0;
 
-    for(auto i = 0U; i < AROWS * ACOLS; ++i) {
-        arr[i] = unif(re);
+    for(size_t i = 0U; i < AROWS * ACOLS; ++i) {
+        double r = ((double)rand() * (high - low)) / (double)RAND_MAX + low;
+        arr[i] = r;
     }
 }
 
 void julia_mmul(double* a, double* b, double* c){
-    for(auto i = 0; i < ACOLS; ++i) {
-        for(auto j = 0; j < AROWS; ++j) {
+    for(size_t i = 0; i < ACOLS; ++i) {
+        for(size_t j = 0; j < AROWS; ++j) {
             double c_ij = 0.0;
-            for(auto k = 0; k < ACOLS; ++k) {
+            for(size_t k = 0; k < ACOLS; ++k) {
                 c_ij += a[k*AROWS + j] * b[i * ACOLS + k];
             }
             c[i*AROWS + j] = c_ij;
@@ -79,6 +99,11 @@ int load_module_from_file(const char* file_name, hsa_ext_module_t* module) {
     int rc = -1;
 
     FILE *fp = fopen(file_name, "rb");
+
+    if (!fp) {
+        printf("Could not open module file %s \n", file_name);
+        exit(-1);
+    }
 
     rc = fseek(fp, 0, SEEK_END);
 
@@ -143,6 +168,8 @@ static hsa_status_t get_kernarg_memory_region(hsa_region_t region, void* data) {
 }
 
 int main(int argc, char **argv) {
+    srand(time(NULL));
+
     hsa_status_t err;
 
     err = hsa_init();
@@ -184,7 +211,7 @@ int main(int argc, char **argv) {
      * Load the BRIG binary.
      */
     hsa_ext_module_t module;
-    load_module_from_file("vector_copy.brig",&module);
+    load_module_from_file(MODULE_FILE,&module);
 
     /*
      * Create hsa program.
@@ -324,10 +351,10 @@ int main(int argc, char **argv) {
     hsa_kernel_dispatch_packet_t* dispatch_packet = &(((hsa_kernel_dispatch_packet_t*)(queue->base_address))[index&queueMask]);
 
     dispatch_packet->setup  |= 1 << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
-    dispatch_packet->workgroup_size_x = (uint16_t)256;
+    dispatch_packet->workgroup_size_x = (uint16_t)1;
     dispatch_packet->workgroup_size_y = (uint16_t)1;
     dispatch_packet->workgroup_size_z = (uint16_t)1;
-    dispatch_packet->grid_size_x = (uint32_t) (1024*1024);
+    dispatch_packet->grid_size_x = (uint32_t) (AROWS);
     dispatch_packet->grid_size_y = 1;
     dispatch_packet->grid_size_z = 1;
     dispatch_packet->completion_signal = signal;
@@ -341,34 +368,38 @@ int main(int argc, char **argv) {
     header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
     header |= HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE;
 
+    printf("DispatchPacket prepared, launching kernel\n");
+
+    struct timespec start, stop, elapsed;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
     __atomic_store_n((uint16_t*)(&dispatch_packet->header), header, __ATOMIC_RELEASE);
-
-	printf("Packet Address: %p \n GridX Address: %p\n", dispatch_packet, &(dispatch_packet->grid_size_x));
-
-	uint8_t* pkg_bytes = (uint8_t*) dispatch_packet;
-
-	for (int i = 0; i < 64; ++i) {
-		printf("%#02x ", pkg_bytes[i]);
-	}
 
     /*
      * Increment the write index and ring the doorbell to dispatch the kernel.
      */
     hsa_queue_store_write_index_relaxed(queue, index+1);
     hsa_signal_store_relaxed(queue->doorbell_signal, index);
-    check(Dispatching the kernel, err);
 
     /*
      * Wait on the dispatch completion signal until the kernel is finished.
      */
     hsa_signal_value_t value = hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, UINT64_MAX, HSA_WAIT_STATE_BLOCKED);
 
+    clock_gettime(CLOCK_MONOTONIC, &stop);
+
+    check(Dispatching the kernel, err);
+
+    elapsed = diff(start, stop);
+    printf("Kernel took %li s %li ns\n", elapsed.tv_sec, elapsed.tv_nsec);
+
+
     /*
      * Validate the data in the output buffer.
      */
     int valid=1;
     int fail_index=0;
-    for(int i=0; i<1024*1024; i++) {
+    for(int i=0; i<AROWS*AROWS; i++) {
         if(c[i]!=c_expected[i]) {
             fail_index=i;
             valid=0;
