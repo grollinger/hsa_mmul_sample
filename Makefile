@@ -21,9 +21,11 @@
 
 HSA_RUNTIME_PATH?=/home/strollinger/hsa/runtime
 
-LFLAGS= -Wl,--unresolved-symbols=ignore-in-shared-libs
+LFLAGS= -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(HSA_RUNTIME_PATH)/lib -lhsa-runtime64 -lhsa-runtime-ext64
 
 CC := clang
+
+CFLAGS= -c -I$(HSA_RUNTIME_PATH)/include -std=c11 -g
 
 HSASM := HSAILasm
 
@@ -35,17 +37,20 @@ HSA_FILES := $(wildcard *.hsail)
 
 BRIG_FILES := $(notdir $(HSA_FILES:.hsail=.brig))
 
-all: mmul
+all: mmul mmul2d
 
-mmul: $(OBJ_FILES) $(BRIG_FILES)
-	$(CC) $(LFLAGS) $(OBJ_FILES) -L$(HSA_RUNTIME_PATH)/lib -lhsa-runtime64 -lhsa-runtime-ext64 -o mmul
+mmul: mmul.o mmul.brig
+	$(CC) $(LFLAGS) mmul.o -o mmul
+
+mmul2d: mmul2d.o mmul2d.brig
+	$(CC) $(LFLAGS) mmul2d.o -o mmul2d
 
 %.o: %.c
-	$(CC) -c -I$(HSA_RUNTIME_PATH)/include -o $@ $< -std=c11 -g
+	$(CC) $(CFLAGS) -o $@ $<
 
 %.brig: %.hsail
 	$(HSASM) -assemble -o=$@ $<
 
 
 clean:
-	rm -rf *.o *.brig mmul
+	rm -rf *.o *.brig mmul mmul2d
