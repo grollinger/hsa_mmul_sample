@@ -31,10 +31,10 @@ HSASM := HSAILasm
 
 SHARED_FILES := main.c header.c
 
-all: mmul mmul2d
+all: mmul1d mmul2d
 
-mmul: mmul.o mmul.brig
-	$(CC) $(LFLAGS) mmul.o -o mmul
+mmul1d: mmul1d.o mmul1d.brig
+	$(CC) $(LFLAGS) mmul1d.o -o mmul1d
 
 mmul2d: mmul2d.o mmul2d.brig
 	$(CC) $(LFLAGS) mmul2d.o -o mmul2d
@@ -47,4 +47,4 @@ mmul%.o: mmul%.c $(SHARED_FILES) mmul_common.c
 
 
 clean:
-	rm -rf *.o *.brig mmul mmul2d
+	rm -rf *.o *.brig mmul1d mmul2d

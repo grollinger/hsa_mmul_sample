@@ -1,6 +1,6 @@
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-kernel void mmul_kernel(
+kernel void mmul1d(
                         global double* a,
                         global double* b,
                         global double* c,

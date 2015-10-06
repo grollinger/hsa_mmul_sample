@@ -91,7 +91,7 @@ void assert_array_equal(const double* expected, const double* value, size_t len)
     }
 
     if(valid) {
-        printf("Passed validation.\n");
+        printf("Passed validation. \n");
     } else {
         printf("VALIDATION FAILED!\nBad index: %d (value: %f != expected: %f)\n",
             fail_index, value[fail_index], expected[fail_index]);

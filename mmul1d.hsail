@@ -1,10 +1,6 @@
-module &_tmp_cloc18188_mmul_opt_bc:1:0:$full:$large:$default;
-extension "amd:gcn";
-extension "IMAGE";
+module &m:1:0:$full:$large:$default;
 
-decl prog function &abort()();
-
-prog kernel &mmul(
+prog kernel &mmul1d(
 	kernarg_u64 %a,
 	kernarg_u64 %b,
 	kernarg_u64 %c,
