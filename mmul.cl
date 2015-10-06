@@ -4,8 +4,8 @@ kernel void mmul_kernel(
                         global double* a,
                         global double* b,
                         global double* c,
-                        ulong arows,
                         ulong acols) {
+  ulong arows = get_global_size(0);
   ulong i = get_global_id(0);
   for(ulong j = 0; j < arows; ++j) {
     double c_ij = 0.0;

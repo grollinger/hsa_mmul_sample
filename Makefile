@@ -29,13 +29,7 @@ CFLAGS= -c -I$(HSA_RUNTIME_PATH)/include -std=c11 -g
 
 HSASM := HSAILasm
 
-C_FILES := $(wildcard *.c)
-
-OBJ_FILES := $(notdir $(C_FILES:.c=.o))
-
-HSA_FILES := $(wildcard *.hsail)
-
-BRIG_FILES := $(notdir $(HSA_FILES:.hsail=.brig))
+SHARED_FILES := main.c header.c
 
 all: mmul mmul2d
 
@@ -45,7 +39,7 @@ mmul: mmul.o mmul.brig
 mmul2d: mmul2d.o mmul2d.brig
 	$(CC) $(LFLAGS) mmul2d.o -o mmul2d
 
-%.o: %.c
+mmul%.o: mmul%.c $(SHARED_FILES) mmul_common.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 %.brig: %.hsail

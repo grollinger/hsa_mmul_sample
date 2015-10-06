@@ -8,14 +8,13 @@ prog kernel &mmul(
 	kernarg_u64 %a,
 	kernarg_u64 %b,
 	kernarg_u64 %c,
-	kernarg_u64 %arows,
 	kernarg_u64 %acols)
 {
 	// BB#0:
-	ld_kernarg_align(8)_width(all)_u64	$d0, [%arows];
-	cmp_eq_b1_s64	$c0, $d0, 0;
-	cbr_b1	$c0, @BB0_5;
-	// BB#1:                                // %.preheader.lr.ph
+    // $d0 = arows
+    gridsize_u32    $s0, 0;
+    cvt_u64_u32 $d0, $s0;
+
 	workitemabsid_u32	$s0, 0;
 	cvt_u64_u32	$d4, $s0;
 	ld_kernarg_align(8)_width(all)_u64	$d1, [%acols];
