@@ -31,7 +31,11 @@ HSASM := HSAILasm
 
 SHARED_FILES := main.c header.c
 
+debug: CFLAGS += -DDEBUG
+
 all: mmul1d mmul2d
+
+debug: all
 
 mmul1d: mmul1d.o mmul1d.brig
 	$(CC) $(LFLAGS) mmul1d.o -o mmul1d

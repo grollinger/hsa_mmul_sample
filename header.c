@@ -11,12 +11,18 @@
 #include "hsa.h"
 #include "hsa_ext_finalize.h"
 
+#ifdef DEBUG
+#define debug(...) printf(__VA_ARGS__)
+#else
+#define debug(...)
+#endif
+
 #define check(msg, status) \
 if (status != HSA_STATUS_SUCCESS) { \
-    printf("%s failed.\n", #msg); \
+    printf("%s failed: %x.\n", #msg, status); \
     exit(1); \
 } else { \
-   printf("%s succeeded.\n", #msg); \
+    debug("%s succeeded.\n", #msg); \
 }
 
 struct timespec diff(struct timespec start, struct timespec end) {
@@ -91,7 +97,7 @@ void assert_array_equal(const double* expected, const double* value, size_t len)
     }
 
     if(valid) {
-        printf("Passed validation. \n");
+        debug("Passed validation. \n");
     } else {
         printf("VALIDATION FAILED!\nBad index: %d (value: %f != expected: %f)\n",
             fail_index, value[fail_index], expected[fail_index]);

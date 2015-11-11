@@ -5,7 +5,10 @@ struct args_t {
     uint64_t acols;
 } __attribute__ ((aligned(16)));
 
-hsa_buf a,b,c,expected;
+hsa_buf a;
+hsa_buf b;
+hsa_buf c;
+hsa_buf expected;
 
 /* Internal Parameters */
 const size_t ACOLS = 1000;

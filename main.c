@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
     char name[64] = { 0 };
     err = hsa_agent_get_info(agent, HSA_AGENT_INFO_NAME, name);
     check(Querying the agent name, err);
-    printf("The agent name is %s.\n", name);
+    debug("The agent name is %s.\n", name);
 
     /*
      * Query the maximum size of the queue.
@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
     uint32_t queue_size = 0;
     err = hsa_agent_get_info(agent, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_size);
     check(Querying the agent maximum queue size, err);
-    printf("The maximum queue size is %u.\n", (unsigned int) queue_size);
+    debug("The maximum queue size is %u.\n", (unsigned int) queue_size);
 
     /*
      * Create a queue using the maximum size.
@@ -261,7 +261,7 @@ int main(int argc, char **argv) {
     header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
     header |= HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE;
 
-    printf("DispatchPacket prepared, launching kernel\n");
+    debug("DispatchPacket prepared, launching kernel\n");
 
     struct timespec start, stop, elapsed;
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -284,7 +284,7 @@ int main(int argc, char **argv) {
     check(Dispatching the kernel, err);
 
     elapsed = diff(start, stop);
-    printf("Kernel took %li s %li ns\n", elapsed.tv_sec, elapsed.tv_nsec);
+    printf("Kernel %s took %li s %li ns\n", KERNEL_NAME, elapsed.tv_sec, elapsed.tv_nsec);
 
     validate(&args);
 
