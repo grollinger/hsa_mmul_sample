@@ -259,50 +259,65 @@ int main(int argc, char **argv) {
      * Write the aql packet at the calculated queue index address.
      */
     const uint32_t queueMask = queue->size - 1;
-    hsa_kernel_dispatch_packet_t* dispatch_packet = &(((hsa_kernel_dispatch_packet_t*)(queue->base_address))[index&queueMask]);
-
-    dispatch_packet->setup  |= GRID_DIM << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
-    dispatch_packet->workgroup_size_x = (uint16_t)1;
-    dispatch_packet->workgroup_size_y = (uint16_t)1;
-    dispatch_packet->workgroup_size_z = (uint16_t)1;
-    dispatch_packet->grid_size_x = (uint32_t) (GRID_X);
-    dispatch_packet->grid_size_y = (uint32_t) (GRID_Y);
-    dispatch_packet->grid_size_z = (uint32_t) (GRID_Z);
-    dispatch_packet->completion_signal = signal;
-    dispatch_packet->kernel_object = kernel_object;
-    dispatch_packet->kernarg_address = (void*) kernarg_address;
-    dispatch_packet->private_segment_size = private_segment_size;
-    dispatch_packet->group_segment_size = group_segment_size;
 
     uint16_t header = 0;
     header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE;
     header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
     header |= HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE;
 
-    debug("DispatchPacket prepared, launching kernel\n");
+    print_params();
 
     struct timespec start, stop, elapsed;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    __atomic_store_n((uint16_t*)(&dispatch_packet->header), header, __ATOMIC_RELEASE);
+    for(size_t i = 0; i < ITERS; ++i) {
+        hsa_kernel_dispatch_packet_t* dispatch_packet =
+            &(((hsa_kernel_dispatch_packet_t*)(queue->base_address))[index&queueMask]);
 
-    /*
-     * Increment the write index and ring the doorbell to dispatch the kernel.
-     */
-    hsa_queue_store_write_index_relaxed(queue, index+1);
-    hsa_signal_store_relaxed(queue->doorbell_signal, index);
+        // Fill in the packet fields
+        dispatch_packet->setup  |= GRID_DIM << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
+        dispatch_packet->workgroup_size_x = (uint16_t)1;
+        dispatch_packet->workgroup_size_y = (uint16_t)1;
+        dispatch_packet->workgroup_size_z = (uint16_t)1;
+        dispatch_packet->grid_size_x = (uint32_t) (GRID_X);
+        dispatch_packet->grid_size_y = (uint32_t) (GRID_Y);
+        dispatch_packet->grid_size_z = (uint32_t) (GRID_Z);
+        dispatch_packet->completion_signal = signal;
+        dispatch_packet->kernel_object = kernel_object;
+        dispatch_packet->kernarg_address = (void*) kernarg_address;
+        dispatch_packet->private_segment_size = private_segment_size;
+        dispatch_packet->group_segment_size = group_segment_size;
 
-    /*
-     * Wait on the dispatch completion signal until the kernel is finished.
-     */
-    hsa_signal_value_t value = hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, UINT64_MAX, HSA_WAIT_STATE_BLOCKED);
+        debug("DispatchPacket prepared, launching kernel\n");
+
+        // Atomically fill in the header
+        __atomic_store_n((uint16_t*)(&dispatch_packet->header), header, __ATOMIC_RELEASE);
+
+        /*
+        * Increment the write index and ring the doorbell to dispatch the kernel.
+        */
+        hsa_queue_store_write_index_relaxed(queue, index+1);
+        hsa_signal_store_relaxed(queue->doorbell_signal, index);
+
+        index++;
+
+        /*
+        * Wait on the dispatch completion signal until the kernel is finished.
+        */
+        hsa_signal_value_t value = hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, UINT64_MAX, HSA_WAIT_STATE_ACTIVE);
+
+        // Reset for next iteration
+        hsa_signal_store_release(signal, 1);
+    }
 
     clock_gettime(CLOCK_MONOTONIC, &stop);
 
     check(Dispatching the kernel, err);
 
     elapsed = diff(start, stop);
-    printf("Kernel %s took %li s %li ns\n", KERNEL_NAME, elapsed.tv_sec, elapsed.tv_nsec);
+    double sec_elapsed = (double) elapsed.tv_sec + (elapsed.tv_nsec / 1.0e9);
+    double sec_avg = sec_elapsed/ITERS;
+    printf("Kernel %s took an average %f s (total of %li s %li ns)\n", KERNEL_NAME, sec_avg, elapsed.tv_sec, elapsed.tv_nsec);
 
     validate(&args);
 
