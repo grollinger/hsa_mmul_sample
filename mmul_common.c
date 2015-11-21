@@ -11,9 +11,9 @@ hsa_buf c;
 hsa_buf expected;
 
 /* Internal Parameters */
-const size_t ITERS = 10;
-const size_t ACOLS = 1000;
-const size_t AROWS = 1000;
+const size_t ITERS = 100;
+const size_t ACOLS = 100;
+const size_t AROWS = 200;
 const size_t ASIZE = ACOLS * AROWS;
 const size_t BSIZE = ACOLS * AROWS;
 const size_t CSIZE = AROWS * AROWS;
@@ -24,7 +24,7 @@ void print_params() {
 }
 
 void julia_mmul(double* a, double* b, double* c){
-    for(size_t i = 0; i < ACOLS; ++i) {
+    for(size_t i = 0; i < AROWS; ++i) {
         for(size_t j = 0; j < AROWS; ++j) {
             double c_ij = 0.0;
             for(size_t k = 0; k < ACOLS; ++k) {
